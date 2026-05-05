@@ -20,6 +20,12 @@ type
   TLLMSettings = record
     Provider: TLLMProvider;
     Model: string;
+    OpenAIModel: string;
+    GeminiModel: string;
+    ClaudeModel: string;
+    GrokModel: string;
+    OpenRouterModel: string;
+    OpenClawModel: string;
     ApiKey: string;
     OpenAIApiKey: string;
     GeminiApiKey: string;
@@ -45,6 +51,8 @@ function DefaultBaseUrl(const AProvider: TLLMProvider): string;
 function DefaultModel(const AProvider: TLLMProvider): string;
 function ProviderUsesToken(const AProvider: TLLMProvider): Boolean;
 function DefaultOpenClawSessionKey: string;
+function ModelForProvider(const ASettings: TLLMSettings): string;
+procedure SetModelForProvider(var ASettings: TLLMSettings; const AModel: string);
 function ApiKeyForProvider(const ASettings: TLLMSettings): string;
 procedure SetApiKeyForProvider(var ASettings: TLLMSettings; const AApiKey: string);
 function BaseUrlForProvider(const ASettings: TLLMSettings): string;
@@ -123,6 +131,38 @@ end;
 function DefaultOpenClawSessionKey: string;
 begin
   Result := 'DelphiClient-default';
+end;
+
+function ModelForProvider(const ASettings: TLLMSettings): string;
+begin
+  case ASettings.Provider of
+    lpOpenAI: Result := ASettings.OpenAIModel;
+    lpGemini: Result := ASettings.GeminiModel;
+    lpClaude: Result := ASettings.ClaudeModel;
+    lpGrok: Result := ASettings.GrokModel;
+    lpOpenRouter: Result := ASettings.OpenRouterModel;
+    lpOpenClaw: Result := ASettings.OpenClawModel;
+  else
+    Result := '';
+  end;
+
+  if Result = '' then
+    Result := ASettings.Model;
+  if Result = '' then
+    Result := DefaultModel(ASettings.Provider);
+end;
+
+procedure SetModelForProvider(var ASettings: TLLMSettings; const AModel: string);
+begin
+  case ASettings.Provider of
+    lpOpenAI: ASettings.OpenAIModel := AModel;
+    lpGemini: ASettings.GeminiModel := AModel;
+    lpClaude: ASettings.ClaudeModel := AModel;
+    lpGrok: ASettings.GrokModel := AModel;
+    lpOpenRouter: ASettings.OpenRouterModel := AModel;
+    lpOpenClaw: ASettings.OpenClawModel := AModel;
+  end;
+  ASettings.Model := AModel;
 end;
 
 function ApiKeyForProvider(const ASettings: TLLMSettings): string;
