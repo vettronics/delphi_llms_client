@@ -11,6 +11,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Dialogs,
+  Vcl.ComCtrls,
   LLM.Types,
   LLM.Config,
   LLM.ChatClients;
@@ -29,9 +30,11 @@ type
     lblSessionKey: TLabel;
     edtSessionKey: TEdit;
     chkKeepContext: TCheckBox;
+    chkVisualMarkdown: TCheckBox;
     btnSave: TButton;
     btnClear: TButton;
     memChat: TMemo;
+    reChat: TRichEdit;
     pnlBottom: TPanel;
     pnlActions: TPanel;
     btnSend: TButton;
@@ -42,15 +45,18 @@ type
     procedure btnSendClick(Sender: TObject);
     procedure btnClearClick(Sender: TObject);
     procedure btnSaveClick(Sender: TObject);
+    procedure chkVisualMarkdownClick(Sender: TObject);
     procedure memPromptKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
   private
     FHistory: TChatMessageList;
+    FTranscriptMarkdown: TStringBuilder;
     procedure LoadLocalSettings;
     procedure SaveLocalSettings;
     function SelectedProvider: TLLMProvider;
     function CurrentSettings: TLLMSettings;
     function BuildMessages(const AText: string): TChatMessageList;
     procedure AddToChat(const ATitle, AText: string);
+    procedure RenderChat;
     procedure SetBusy(const AValue: Boolean);
     procedure UpdateProviderUi;
   end;
@@ -63,11 +69,13 @@ implementation
 {$R *.dfm}
 
 uses
-  Winapi.Windows;
+  Winapi.Windows,
+  MarkdownRenderer;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
   FHistory := TChatMessageList.Create;
+  FTranscriptMarkdown := TStringBuilder.Create;
 
   cbProvider.Items.Clear;
   cbProvider.Items.Add(ProviderToString(lpOpenAI));
@@ -78,11 +86,13 @@ begin
   cbProvider.Items.Add(ProviderToString(lpOpenClaw));
 
   LoadLocalSettings;
+  RenderChat;
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
   SaveLocalSettings;
+  FTranscriptMarkdown.Free;
   FHistory.Free;
 end;
 
@@ -194,12 +204,39 @@ end;
 
 procedure TfrmMain.AddToChat(const ATitle, AText: string);
 begin
-  if memChat.Lines.Count > 0 then
-    memChat.Lines.Add('');
+  if FTranscriptMarkdown.Length > 0 then
+    FTranscriptMarkdown.AppendLine;
 
-  memChat.Lines.Add(ATitle + ':');
-  memChat.Lines.Add(AText);
-  memChat.SelStart := Length(memChat.Text);
+  FTranscriptMarkdown.AppendLine('## ' + ATitle);
+  FTranscriptMarkdown.AppendLine;
+  FTranscriptMarkdown.AppendLine(AText);
+  RenderChat;
+end;
+
+procedure TfrmMain.RenderChat;
+var
+  Text: string;
+begin
+  Text := FTranscriptMarkdown.ToString;
+
+  memChat.Visible := not chkVisualMarkdown.Checked;
+  reChat.Visible := chkVisualMarkdown.Checked;
+
+  if chkVisualMarkdown.Checked then
+  begin
+    TMarkdownRenderer.RenderToRichEdit(reChat, Text);
+    reChat.SelStart := Length(reChat.Text);
+  end
+  else
+  begin
+    memChat.Text := Text;
+    memChat.SelStart := Length(memChat.Text);
+  end;
+end;
+
+procedure TfrmMain.chkVisualMarkdownClick(Sender: TObject);
+begin
+  RenderChat;
 end;
 
 procedure TfrmMain.btnSendClick(Sender: TObject);
@@ -246,7 +283,9 @@ end;
 procedure TfrmMain.btnClearClick(Sender: TObject);
 begin
   FHistory.Clear;
+  FTranscriptMarkdown.Clear;
   memChat.Clear;
+  reChat.Clear;
   memPrompt.SetFocus;
 end;
 
@@ -275,6 +314,7 @@ begin
   edtBaseUrl.Enabled := not AValue;
   edtSecret.Enabled := not AValue;
   chkKeepContext.Enabled := not AValue;
+  chkVisualMarkdown.Enabled := not AValue;
   edtSessionKey.Enabled := (not AValue) and (SelectedProvider = lpOpenClaw);
 
   if AValue then
