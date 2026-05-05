@@ -6,6 +6,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
+  System.Diagnostics,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
@@ -52,6 +53,7 @@ type
     FTranscriptMarkdown: TStringBuilder;
     FSettings: TLLMSettings;
     FActiveProvider: TLLMProvider;
+    FLoadingSettings: Boolean;
     procedure LoadLocalSettings;
     procedure SaveLocalSettings;
     procedure StoreVisibleProviderFields;
@@ -82,6 +84,7 @@ begin
   FTranscriptMarkdown := TStringBuilder.Create;
   FSettings := TLLMConfigStore.DefaultSettings;
   FActiveProvider := FSettings.Provider;
+  FLoadingSettings := False;
 
   cbProvider.Items.Clear;
   cbProvider.Items.Add(ProviderToString(lpOpenAI));
@@ -104,19 +107,27 @@ end;
 
 procedure TfrmMain.LoadLocalSettings;
 begin
-  FSettings := TLLMConfigStore.Load;
-  FActiveProvider := FSettings.Provider;
+  FLoadingSettings := True;
+  try
+    FSettings := TLLMConfigStore.Load;
+    FActiveProvider := FSettings.Provider;
 
-  cbProvider.ItemIndex := Ord(FSettings.Provider);
-  edtSessionKey.Text := FSettings.OpenClawEndpoint;
-  chkKeepContext.Checked := FSettings.KeepLocalContext;
-  DisplayProviderFields(FSettings.Provider);
+    cbProvider.ItemIndex := Ord(FSettings.Provider);
+    edtSessionKey.Text := FSettings.OpenClawEndpoint;
+    chkKeepContext.Checked := FSettings.KeepLocalContext;
+    DisplayProviderFields(FSettings.Provider);
+  finally
+    FLoadingSettings := False;
+  end;
 
   UpdateProviderUi;
 end;
 
 procedure TfrmMain.SaveLocalSettings;
 begin
+  if FLoadingSettings then
+    Exit;
+
   StoreVisibleProviderFields;
   FSettings := CurrentSettings;
   TLLMConfigStore.Save(FSettings);
@@ -126,6 +137,9 @@ procedure TfrmMain.StoreVisibleProviderFields;
 var
   OldProvider: TLLMProvider;
 begin
+  if FLoadingSettings then
+    Exit;
+
   OldProvider := FSettings.Provider;
   try
     FSettings.Provider := FActiveProvider;
@@ -197,6 +211,9 @@ procedure TfrmMain.cbProviderChange(Sender: TObject);
 var
   NewProvider: TLLMProvider;
 begin
+  if FLoadingSettings then
+    Exit;
+
   StoreVisibleProviderFields;
 
   NewProvider := SelectedProvider;
@@ -204,7 +221,10 @@ begin
   FActiveProvider := NewProvider;
 
   if NewProvider = lpOpenClaw then
-    edtSessionKey.Text := DefaultOpenClawSessionKey;
+  begin
+    if Trim(edtSessionKey.Text) = '' then
+      edtSessionKey.Text := DefaultOpenClawSessionKey;
+  end;
 
   DisplayProviderFields(NewProvider);
   UpdateProviderUi;
@@ -252,8 +272,7 @@ begin
     FTranscriptMarkdown.AppendLine;
 
   FTranscriptMarkdown.AppendLine('## ' + ATitle);
-  FTranscriptMarkdown.AppendLine;
-  FTranscriptMarkdown.AppendLine(AText);
+  FTranscriptMarkdown.AppendLine(TrimRight(AText));
   RenderChat;
 end;
 
@@ -290,6 +309,8 @@ var
   Client: TCustomChatClient;
   OutMsgs: TChatMessageList;
   Settings: TLLMSettings;
+  Stopwatch: TStopwatch;
+  ElapsedText: string;
 begin
   Msg := Trim(memPrompt.Text);
   if Msg = '' then
@@ -303,18 +324,23 @@ begin
 
   Client := nil;
   OutMsgs := nil;
+  Stopwatch := TStopwatch.StartNew;
   try
     OutMsgs := BuildMessages(Msg);
     Client := TChatClientFactory.CreateClient(Settings);
     Answer := Client.SendMessage(OutMsgs);
+    Stopwatch.Stop;
+    ElapsedText := FormatFloat('0.00', Stopwatch.Elapsed.TotalSeconds) + ' s';
 
     FHistory.Add(TChatMessage.Create('user', Msg));
     FHistory.Add(TChatMessage.Create('assistant', Answer));
-    AddToChat(ProviderToString(Settings.Provider), Answer);
+    AddToChat(ProviderToString(Settings.Provider) + ' — ' + ElapsedText, Answer);
   except
     on E: Exception do
     begin
-      AddToChat('Erro', E.Message);
+      Stopwatch.Stop;
+      ElapsedText := FormatFloat('0.00', Stopwatch.Elapsed.TotalSeconds) + ' s';
+      AddToChat('Erro — ' + ElapsedText, E.Message);
       MessageDlg(E.Message, mtError, [mbOK], 0);
     end;
   end;
@@ -341,7 +367,7 @@ end;
 
 procedure TfrmMain.memPromptKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  if (Key = VK_RETURN) and (ssCtrl in Shift) then
+  if (Key = VK_RETURN) and not (ssShift in Shift) then
   begin
     Key := 0;
     btnSendClick(Sender);
