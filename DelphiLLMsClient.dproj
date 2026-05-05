@@ -38,7 +38,10 @@
         <DelphiCompile Include="DelphiLLMsClient.dpr">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="src\MainForm.pas"/>
+        <DCCReference Include="src\MainForm.pas">
+            <Form>frmMain</Form>
+            <FormType>dfm</FormType>
+        </DCCReference>
         <DCCReference Include="src\LLM.Types.pas"/>
         <DCCReference Include="src\LLM.Config.pas"/>
         <DCCReference Include="src\LLM.ChatClients.pas"/>
