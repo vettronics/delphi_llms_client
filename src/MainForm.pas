@@ -54,8 +54,8 @@ type
     FActiveProvider: TLLMProvider;
     procedure LoadLocalSettings;
     procedure SaveLocalSettings;
-    procedure StoreVisibleSecret;
-    procedure DisplaySecretForProvider(const AProvider: TLLMProvider);
+    procedure StoreVisibleProviderFields;
+    procedure DisplayProviderFields(const AProvider: TLLMProvider);
     function SelectedProvider: TLLMProvider;
     function CurrentSettings: TLLMSettings;
     function BuildMessages(const AText: string): TChatMessageList;
@@ -109,53 +109,50 @@ begin
 
   cbProvider.ItemIndex := Ord(FSettings.Provider);
   edtModel.Text := FSettings.Model;
-  edtBaseUrl.Text := FSettings.BaseUrl;
   edtSessionKey.Text := FSettings.OpenClawEndpoint;
   chkKeepContext.Checked := FSettings.KeepLocalContext;
-  DisplaySecretForProvider(FSettings.Provider);
+  DisplayProviderFields(FSettings.Provider);
 
   UpdateProviderUi;
 end;
 
 procedure TfrmMain.SaveLocalSettings;
 begin
-  StoreVisibleSecret;
+  StoreVisibleProviderFields;
   FSettings := CurrentSettings;
   TLLMConfigStore.Save(FSettings);
 end;
 
-procedure TfrmMain.StoreVisibleSecret;
+procedure TfrmMain.StoreVisibleProviderFields;
 var
   OldProvider: TLLMProvider;
 begin
-  if FActiveProvider = lpOpenClaw then
-  begin
-    FSettings.OpenClawToken := Trim(edtSecret.Text);
-    Exit;
-  end;
-
   OldProvider := FSettings.Provider;
   try
     FSettings.Provider := FActiveProvider;
-    SetApiKeyForProvider(FSettings, Trim(edtSecret.Text));
+    SetBaseUrlForProvider(FSettings, Trim(edtBaseUrl.Text));
+
+    if FActiveProvider = lpOpenClaw then
+      FSettings.OpenClawToken := Trim(edtSecret.Text)
+    else
+      SetApiKeyForProvider(FSettings, Trim(edtSecret.Text));
   finally
     FSettings.Provider := OldProvider;
   end;
 end;
 
-procedure TfrmMain.DisplaySecretForProvider(const AProvider: TLLMProvider);
+procedure TfrmMain.DisplayProviderFields(const AProvider: TLLMProvider);
 var
   TempSettings: TLLMSettings;
 begin
-  if AProvider = lpOpenClaw then
-  begin
-    edtSecret.Text := FSettings.OpenClawToken;
-    Exit;
-  end;
-
   TempSettings := FSettings;
   TempSettings.Provider := AProvider;
-  edtSecret.Text := ApiKeyForProvider(TempSettings);
+  edtBaseUrl.Text := BaseUrlForProvider(TempSettings);
+
+  if AProvider = lpOpenClaw then
+    edtSecret.Text := FSettings.OpenClawToken
+  else
+    edtSecret.Text := ApiKeyForProvider(TempSettings);
 end;
 
 function TfrmMain.SelectedProvider: TLLMProvider;
@@ -171,17 +168,18 @@ begin
   Result := FSettings;
   Result.Provider := SelectedProvider;
   Result.Model := Trim(edtModel.Text);
-  Result.BaseUrl := Trim(edtBaseUrl.Text);
   Result.OpenClawEndpoint := Trim(edtSessionKey.Text);
   Result.KeepLocalContext := chkKeepContext.Checked;
   Result.TimeoutSeconds := 120;
 
   if Result.Model = '' then
     Result.Model := DefaultModel(Result.Provider);
-  if Result.BaseUrl = '' then
-    Result.BaseUrl := DefaultBaseUrl(Result.Provider);
   if Result.OpenClawEndpoint = '' then
     Result.OpenClawEndpoint := DefaultOpenClawSessionKey;
+
+  SetBaseUrlForProvider(Result, Trim(edtBaseUrl.Text));
+  if Result.BaseUrl = '' then
+    SetBaseUrlForProvider(Result, DefaultBaseUrl(Result.Provider));
 
   if Result.Provider = lpOpenClaw then
     Result.OpenClawToken := Trim(edtSecret.Text)
@@ -196,19 +194,18 @@ procedure TfrmMain.cbProviderChange(Sender: TObject);
 var
   NewProvider: TLLMProvider;
 begin
-  StoreVisibleSecret;
+  StoreVisibleProviderFields;
 
   NewProvider := SelectedProvider;
   FSettings.Provider := NewProvider;
   FActiveProvider := NewProvider;
 
   edtModel.Text := DefaultModel(NewProvider);
-  edtBaseUrl.Text := DefaultBaseUrl(NewProvider);
 
   if NewProvider = lpOpenClaw then
     edtSessionKey.Text := DefaultOpenClawSessionKey;
 
-  DisplaySecretForProvider(NewProvider);
+  DisplayProviderFields(NewProvider);
   UpdateProviderUi;
 end;
 
