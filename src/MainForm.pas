@@ -7,6 +7,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   System.Diagnostics,
+  System.Threading,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
@@ -34,6 +35,8 @@ type
     chkVisualMarkdown: TCheckBox;
     btnSave: TButton;
     btnClear: TButton;
+    lblBusy: TLabel;
+    tmrBusy: TTimer;
     memChat: TMemo;
     reChat: TRichEdit;
     pnlBottom: TPanel;
@@ -48,12 +51,14 @@ type
     procedure btnSaveClick(Sender: TObject);
     procedure chkVisualMarkdownClick(Sender: TObject);
     procedure memPromptKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure tmrBusyTimer(Sender: TObject);
   private
     FHistory: TChatMessageList;
     FTranscriptMarkdown: TStringBuilder;
     FSettings: TLLMSettings;
     FActiveProvider: TLLMProvider;
     FLoadingSettings: Boolean;
+    FBusyFrame: Integer;
     procedure LoadLocalSettings;
     procedure SaveLocalSettings;
     procedure StoreVisibleProviderFields;
@@ -85,6 +90,7 @@ begin
   FSettings := TLLMConfigStore.DefaultSettings;
   FActiveProvider := FSettings.Provider;
   FLoadingSettings := False;
+  FBusyFrame := 0;
 
   cbProvider.Items.Clear;
   cbProvider.Items.Add(ProviderToString(lpOpenAI));
@@ -96,6 +102,7 @@ begin
 
   LoadLocalSettings;
   RenderChat;
+  SetBusy(False);
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
@@ -305,12 +312,8 @@ end;
 procedure TfrmMain.btnSendClick(Sender: TObject);
 var
   Msg: string;
-  Answer: string;
-  Client: TCustomChatClient;
   OutMsgs: TChatMessageList;
   Settings: TLLMSettings;
-  Stopwatch: TStopwatch;
-  ElapsedText: string;
 begin
   Msg := Trim(memPrompt.Text);
   if Msg = '' then
@@ -318,36 +321,64 @@ begin
 
   SaveLocalSettings;
   Settings := CurrentSettings;
+  OutMsgs := BuildMessages(Msg);
+
   AddToChat('Utilizador', Msg);
   memPrompt.Clear;
   SetBusy(True);
 
-  Client := nil;
-  OutMsgs := nil;
-  Stopwatch := TStopwatch.StartNew;
-  try
-    OutMsgs := BuildMessages(Msg);
-    Client := TChatClientFactory.CreateClient(Settings);
-    Answer := Client.SendMessage(OutMsgs);
-    Stopwatch.Stop;
-    ElapsedText := FormatFloat('0.00', Stopwatch.Elapsed.TotalSeconds) + ' s';
-
-    FHistory.Add(TChatMessage.Create('user', Msg));
-    FHistory.Add(TChatMessage.Create('assistant', Answer));
-    AddToChat(ProviderToString(Settings.Provider) + ' — ' + ElapsedText, Answer);
-  except
-    on E: Exception do
+  TTask.Run(
+    procedure
+    var
+      Client: TCustomChatClient;
+      Stopwatch: TStopwatch;
+      Answer: string;
+      ErrorText: string;
+      ElapsedText: string;
+      Ok: Boolean;
     begin
-      Stopwatch.Stop;
-      ElapsedText := FormatFloat('0.00', Stopwatch.Elapsed.TotalSeconds) + ' s';
-      AddToChat('Erro — ' + ElapsedText, E.Message);
-      MessageDlg(E.Message, mtError, [mbOK], 0);
-    end;
-  end;
+      Client := nil;
+      Ok := False;
+      ErrorText := '';
+      Answer := '';
+      Stopwatch := TStopwatch.StartNew;
+      try
+        try
+          Client := TChatClientFactory.CreateClient(Settings);
+          Answer := Client.SendMessage(OutMsgs);
+          Ok := True;
+        except
+          on E: Exception do
+          begin
+            ErrorText := E.Message;
+            Ok := False;
+          end;
+        end;
+      finally
+        Stopwatch.Stop;
+        ElapsedText := FormatFloat('0.00', Stopwatch.Elapsed.TotalSeconds) + ' s';
+        Client.Free;
+        OutMsgs.Free;
+      end;
 
-  Client.Free;
-  OutMsgs.Free;
-  SetBusy(False);
+      TThread.Queue(nil,
+        procedure
+        begin
+          if Ok then
+          begin
+            FHistory.Add(TChatMessage.Create('user', Msg));
+            FHistory.Add(TChatMessage.Create('assistant', Answer));
+            AddToChat(ProviderToString(Settings.Provider) + ' - ' + ElapsedText, Answer);
+          end
+          else
+          begin
+            AddToChat('Erro - ' + ElapsedText, ErrorText);
+            MessageDlg(ErrorText, mtError, [mbOK], 0);
+          end;
+
+          SetBusy(False);
+        end);
+    end);
 end;
 
 procedure TfrmMain.btnClearClick(Sender: TObject);
@@ -374,6 +405,17 @@ begin
   end;
 end;
 
+procedure TfrmMain.tmrBusyTimer(Sender: TObject);
+const
+  FRAMES: array[0..3] of string = ('|', '/', '-', '\');
+begin
+  Inc(FBusyFrame);
+  if FBusyFrame > High(FRAMES) then
+    FBusyFrame := Low(FRAMES);
+
+  lblBusy.Caption := FRAMES[FBusyFrame] + ' A aguardar resposta...';
+end;
+
 procedure TfrmMain.SetBusy(const AValue: Boolean);
 begin
   btnSend.Enabled := not AValue;
@@ -386,13 +428,21 @@ begin
   chkKeepContext.Enabled := not AValue;
   chkVisualMarkdown.Enabled := not AValue;
   edtSessionKey.Enabled := (not AValue) and (SelectedProvider = lpOpenClaw);
+  memPrompt.Enabled := not AValue;
 
+  lblBusy.Visible := AValue;
+  tmrBusy.Enabled := AValue;
   if AValue then
-    Screen.Cursor := crHourGlass
+  begin
+    FBusyFrame := 0;
+    lblBusy.Caption := '| A aguardar resposta...';
+    Screen.Cursor := crHourGlass;
+  end
   else
+  begin
+    lblBusy.Caption := '';
     Screen.Cursor := crDefault;
-
-  Application.ProcessMessages;
+  end;
 end;
 
 end.
