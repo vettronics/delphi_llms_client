@@ -5,7 +5,8 @@ uses
   MainForm in 'src\MainForm.pas',
   LLM.Types in 'src\LLM.Types.pas',
   LLM.Config in 'src\LLM.Config.pas',
-  LLM.ChatClients in 'src\LLM.ChatClients.pas';
+  LLM.ChatClients in 'src\LLM.ChatClients.pas',
+  OpenClawClient in 'OpenClawClient.pas';
 
 begin
   Application.Initialize;
