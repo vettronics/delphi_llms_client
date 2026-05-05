@@ -7,7 +7,6 @@ uses
   System.Classes,
   System.Generics.Collections,
   System.Diagnostics,
-  System.Threading,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
@@ -35,8 +34,6 @@ type
     chkVisualMarkdown: TCheckBox;
     btnSave: TButton;
     btnClear: TButton;
-    lblBusy: TLabel;
-    tmrBusy: TTimer;
     memChat: TMemo;
     reChat: TRichEdit;
     pnlBottom: TPanel;
@@ -51,7 +48,6 @@ type
     procedure btnSaveClick(Sender: TObject);
     procedure chkVisualMarkdownClick(Sender: TObject);
     procedure memPromptKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure tmrBusyTimer(Sender: TObject);
   private
     FHistory: TChatMessageList;
     FTranscriptMarkdown: TStringBuilder;
@@ -59,7 +55,10 @@ type
     FActiveProvider: TLLMProvider;
     FLoadingSettings: Boolean;
     FBusyFrame: Integer;
+    FBusyLabel: TLabel;
+    FBusyTimer: TTimer;
     procedure EnsureBusyIndicator;
+    procedure BusyTimer(Sender: TObject);
     procedure LoadLocalSettings;
     procedure SaveLocalSettings;
     procedure StoreVisibleProviderFields;
@@ -92,6 +91,8 @@ begin
   FActiveProvider := FSettings.Provider;
   FLoadingSettings := False;
   FBusyFrame := 0;
+  FBusyLabel := nil;
+  FBusyTimer := nil;
   EnsureBusyIndicator;
 
   cbProvider.Items.Clear;
@@ -109,29 +110,31 @@ end;
 
 procedure TfrmMain.EnsureBusyIndicator;
 begin
-  if lblBusy = nil then
+  if FBusyLabel = nil then
   begin
-    lblBusy := TLabel.Create(Self);
-    lblBusy.Parent := pnlTop;
-    lblBusy.Left := 12;
-    lblBusy.Top := 124;
-    lblBusy.Width := 260;
-    lblBusy.Height := 17;
-    lblBusy.Caption := '';
-    lblBusy.Visible := False;
+    FBusyLabel := TLabel.Create(Self);
+    FBusyLabel.Parent := pnlTop;
+    FBusyLabel.Left := 12;
+    FBusyLabel.Top := 124;
+    FBusyLabel.Width := 320;
+    FBusyLabel.Height := 17;
+    FBusyLabel.Caption := '';
+    FBusyLabel.Visible := False;
   end;
 
-  if tmrBusy = nil then
+  if FBusyTimer = nil then
   begin
-    tmrBusy := TTimer.Create(Self);
-    tmrBusy.Enabled := False;
-    tmrBusy.Interval := 150;
-    tmrBusy.OnTimer := tmrBusyTimer;
+    FBusyTimer := TTimer.Create(Self);
+    FBusyTimer.Enabled := False;
+    FBusyTimer.Interval := 150;
+    FBusyTimer.OnTimer := BusyTimer;
   end;
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
+  if FBusyTimer <> nil then
+    FBusyTimer.Enabled := False;
   SaveLocalSettings;
   FTranscriptMarkdown.Free;
   FHistory.Free;
@@ -339,6 +342,7 @@ var
   Msg: string;
   OutMsgs: TChatMessageList;
   Settings: TLLMSettings;
+  Worker: TThread;
 begin
   Msg := Trim(memPrompt.Text);
   if Msg = '' then
@@ -352,7 +356,7 @@ begin
   memPrompt.Clear;
   SetBusy(True);
 
-  TTask.Run(
+  Worker := TThread.CreateAnonymousThread(
     procedure
     var
       Client: TCustomChatClient;
@@ -386,7 +390,7 @@ begin
         OutMsgs.Free;
       end;
 
-      TThread.Queue(nil,
+      TThread.Synchronize(nil,
         procedure
         begin
           if Ok then
@@ -404,6 +408,9 @@ begin
           SetBusy(False);
         end);
     end);
+
+  Worker.FreeOnTerminate := True;
+  Worker.Start;
 end;
 
 procedure TfrmMain.btnClearClick(Sender: TObject);
@@ -430,7 +437,7 @@ begin
   end;
 end;
 
-procedure TfrmMain.tmrBusyTimer(Sender: TObject);
+procedure TfrmMain.BusyTimer(Sender: TObject);
 const
   FRAMES: array[0..3] of string = ('|', '/', '-', '\');
 begin
@@ -438,12 +445,14 @@ begin
   if FBusyFrame > High(FRAMES) then
     FBusyFrame := Low(FRAMES);
 
-  if lblBusy <> nil then
-    lblBusy.Caption := FRAMES[FBusyFrame] + ' A aguardar resposta...';
+  if FBusyLabel <> nil then
+    FBusyLabel.Caption := FRAMES[FBusyFrame] + ' A aguardar resposta...';
 end;
 
 procedure TfrmMain.SetBusy(const AValue: Boolean);
 begin
+  EnsureBusyIndicator;
+
   btnSend.Enabled := not AValue;
   btnClear.Enabled := not AValue;
   btnSave.Enabled := not AValue;
@@ -456,22 +465,18 @@ begin
   edtSessionKey.Enabled := (not AValue) and (SelectedProvider = lpOpenClaw);
   memPrompt.Enabled := not AValue;
 
-  if lblBusy <> nil then
-    lblBusy.Visible := AValue;
-  if tmrBusy <> nil then
-    tmrBusy.Enabled := AValue;
+  FBusyLabel.Visible := AValue;
+  FBusyTimer.Enabled := AValue;
 
   if AValue then
   begin
     FBusyFrame := 0;
-    if lblBusy <> nil then
-      lblBusy.Caption := '| A aguardar resposta...';
+    FBusyLabel.Caption := '| A aguardar resposta...';
     Screen.Cursor := crHourGlass;
   end
   else
   begin
-    if lblBusy <> nil then
-      lblBusy.Caption := '';
+    FBusyLabel.Caption := '';
     Screen.Cursor := crDefault;
   end;
 end;
