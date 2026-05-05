@@ -21,6 +21,11 @@ type
     Provider: TLLMProvider;
     Model: string;
     ApiKey: string;
+    OpenAIApiKey: string;
+    GeminiApiKey: string;
+    ClaudeApiKey: string;
+    GrokApiKey: string;
+    OpenRouterApiKey: string;
     BaseUrl: string;
     OpenClawToken: string;
     OpenClawEndpoint: string;
@@ -34,6 +39,8 @@ function DefaultBaseUrl(const AProvider: TLLMProvider): string;
 function DefaultModel(const AProvider: TLLMProvider): string;
 function ProviderUsesToken(const AProvider: TLLMProvider): Boolean;
 function DefaultOpenClawSessionKey: string;
+function ApiKeyForProvider(const ASettings: TLLMSettings): string;
+procedure SetApiKeyForProvider(var ASettings: TLLMSettings; const AApiKey: string);
 
 implementation
 
@@ -108,6 +115,34 @@ end;
 function DefaultOpenClawSessionKey: string;
 begin
   Result := 'DelphiClient-default';
+end;
+
+function ApiKeyForProvider(const ASettings: TLLMSettings): string;
+begin
+  case ASettings.Provider of
+    lpOpenAI: Result := ASettings.OpenAIApiKey;
+    lpGemini: Result := ASettings.GeminiApiKey;
+    lpClaude: Result := ASettings.ClaudeApiKey;
+    lpGrok: Result := ASettings.GrokApiKey;
+    lpOpenRouter: Result := ASettings.OpenRouterApiKey;
+  else
+    Result := '';
+  end;
+
+  if Result = '' then
+    Result := ASettings.ApiKey;
+end;
+
+procedure SetApiKeyForProvider(var ASettings: TLLMSettings; const AApiKey: string);
+begin
+  case ASettings.Provider of
+    lpOpenAI: ASettings.OpenAIApiKey := AApiKey;
+    lpGemini: ASettings.GeminiApiKey := AApiKey;
+    lpClaude: ASettings.ClaudeApiKey := AApiKey;
+    lpGrok: ASettings.GrokApiKey := AApiKey;
+    lpOpenRouter: ASettings.OpenRouterApiKey := AApiKey;
+  end;
+  ASettings.ApiKey := AApiKey;
 end;
 
 end.
