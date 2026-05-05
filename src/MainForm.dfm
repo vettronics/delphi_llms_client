@@ -101,29 +101,38 @@ object frmMain: TfrmMain
     object chkKeepContext: TCheckBox
       Left = 295
       Top = 101
-      Width = 360
+      Width = 330
       Height = 24
       Caption = 'Manter contexto local'
       Checked = True
       State = cbChecked
       TabOrder = 5
     end
+    object chkVisualMarkdown: TCheckBox
+      Left = 635
+      Top = 101
+      Width = 150
+      Height = 24
+      Caption = 'Ver Markdown visual'
+      TabOrder = 6
+      OnClick = chkVisualMarkdownClick
+    end
     object btnSave: TButton
-      Left = 680
+      Left = 800
       Top = 96
       Width = 110
       Height = 32
       Caption = 'Guardar'
-      TabOrder = 6
+      TabOrder = 7
       OnClick = btnSaveClick
     end
     object btnClear: TButton
-      Left = 800
+      Left = 920
       Top = 96
       Width = 140
       Height = 32
       Caption = 'Limpar conversa'
-      TabOrder = 7
+      TabOrder = 8
       OnClick = btnClearClick
     end
   end
@@ -140,6 +149,18 @@ object frmMain: TfrmMain
     TabOrder = 1
     WordWrap = True
   end
+  object reChat: TRichEdit
+    Left = 0
+    Top = 140
+    Width = 1120
+    Height = 420
+    Align = alClient
+    ReadOnly = True
+    ScrollBars = ssVertical
+    TabOrder = 2
+    Visible = False
+    Zoom = 100
+  end
   object pnlBottom: TPanel
     Left = 0
     Top = 560
@@ -151,7 +172,7 @@ object frmMain: TfrmMain
     Padding.Top = 8
     Padding.Right = 10
     Padding.Bottom = 10
-    TabOrder = 2
+    TabOrder = 3
     object pnlActions: TPanel
       Left = 965
       Top = 8
