@@ -59,6 +59,7 @@ type
     FActiveProvider: TLLMProvider;
     FLoadingSettings: Boolean;
     FBusyFrame: Integer;
+    procedure EnsureBusyIndicator;
     procedure LoadLocalSettings;
     procedure SaveLocalSettings;
     procedure StoreVisibleProviderFields;
@@ -91,6 +92,7 @@ begin
   FActiveProvider := FSettings.Provider;
   FLoadingSettings := False;
   FBusyFrame := 0;
+  EnsureBusyIndicator;
 
   cbProvider.Items.Clear;
   cbProvider.Items.Add(ProviderToString(lpOpenAI));
@@ -103,6 +105,29 @@ begin
   LoadLocalSettings;
   RenderChat;
   SetBusy(False);
+end;
+
+procedure TfrmMain.EnsureBusyIndicator;
+begin
+  if lblBusy = nil then
+  begin
+    lblBusy := TLabel.Create(Self);
+    lblBusy.Parent := pnlTop;
+    lblBusy.Left := 12;
+    lblBusy.Top := 124;
+    lblBusy.Width := 260;
+    lblBusy.Height := 17;
+    lblBusy.Caption := '';
+    lblBusy.Visible := False;
+  end;
+
+  if tmrBusy = nil then
+  begin
+    tmrBusy := TTimer.Create(Self);
+    tmrBusy.Enabled := False;
+    tmrBusy.Interval := 150;
+    tmrBusy.OnTimer := tmrBusyTimer;
+  end;
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
@@ -413,7 +438,8 @@ begin
   if FBusyFrame > High(FRAMES) then
     FBusyFrame := Low(FRAMES);
 
-  lblBusy.Caption := FRAMES[FBusyFrame] + ' A aguardar resposta...';
+  if lblBusy <> nil then
+    lblBusy.Caption := FRAMES[FBusyFrame] + ' A aguardar resposta...';
 end;
 
 procedure TfrmMain.SetBusy(const AValue: Boolean);
@@ -430,17 +456,22 @@ begin
   edtSessionKey.Enabled := (not AValue) and (SelectedProvider = lpOpenClaw);
   memPrompt.Enabled := not AValue;
 
-  lblBusy.Visible := AValue;
-  tmrBusy.Enabled := AValue;
+  if lblBusy <> nil then
+    lblBusy.Visible := AValue;
+  if tmrBusy <> nil then
+    tmrBusy.Enabled := AValue;
+
   if AValue then
   begin
     FBusyFrame := 0;
-    lblBusy.Caption := '| A aguardar resposta...';
+    if lblBusy <> nil then
+      lblBusy.Caption := '| A aguardar resposta...';
     Screen.Cursor := crHourGlass;
   end
   else
   begin
-    lblBusy.Caption := '';
+    if lblBusy <> nil then
+      lblBusy.Caption := '';
     Screen.Cursor := crDefault;
   end;
 end;
