@@ -12,6 +12,7 @@ type
   TLLMConfigStore = class
   public
     class function SettingsFileName: string; static;
+    class function DefaultSettings: TLLMSettings; static;
     class function Load: TLLMSettings; static;
     class procedure Save(const ASettings: TLLMSettings); static;
   end;
@@ -30,31 +31,39 @@ begin
   Result := TPath.Combine(LFolder, 'settings.ini');
 end;
 
+class function TLLMConfigStore.DefaultSettings: TLLMSettings;
+begin
+  Result.Provider := lpOpenAI;
+  Result.Model := DefaultModel(Result.Provider);
+  Result.ApiKey := 'COLOCAR_API_KEY_AQUI';
+  Result.BaseUrl := DefaultBaseUrl(Result.Provider);
+  Result.OpenClawToken := 'COLOCAR_TOKEN_OPENCLAW_AQUI';
+  Result.OpenClawEndpoint := DefaultOpenClawSessionKey;
+  Result.KeepLocalContext := True;
+  Result.TimeoutSeconds := 120;
+end;
+
 class function TLLMConfigStore.Load: TLLMSettings;
 var
   LIni: TIniFile;
   LFileName: string;
 begin
-  Result.Provider := lpOpenAI;
-  Result.Model := DefaultModel(Result.Provider);
-  Result.ApiKey := '';
-  Result.BaseUrl := DefaultBaseUrl(Result.Provider);
-  Result.OpenClawToken := '';
-  Result.OpenClawEndpoint := DefaultOpenClawSessionKey;
-  Result.KeepLocalContext := True;
-  Result.TimeoutSeconds := 120;
+  Result := DefaultSettings;
 
   LFileName := SettingsFileName;
   if not TFile.Exists(LFileName) then
+  begin
+    Save(Result);
     Exit;
+  end;
 
   LIni := TIniFile.Create(LFileName);
   try
     Result.Provider := StringToProvider(LIni.ReadString('General', 'Provider', ProviderToString(Result.Provider)));
     Result.Model := LIni.ReadString('General', 'Model', DefaultModel(Result.Provider));
     Result.BaseUrl := LIni.ReadString('General', 'BaseUrl', DefaultBaseUrl(Result.Provider));
-    Result.ApiKey := LIni.ReadString('Secrets', 'ApiKey', '');
-    Result.OpenClawToken := LIni.ReadString('Secrets', 'OpenClawToken', '');
+    Result.ApiKey := LIni.ReadString('Secrets', 'ApiKey', Result.ApiKey);
+    Result.OpenClawToken := LIni.ReadString('Secrets', 'OpenClawToken', Result.OpenClawToken);
     Result.OpenClawEndpoint := LIni.ReadString('OpenClaw', 'Endpoint', DefaultOpenClawSessionKey);
     Result.KeepLocalContext := LIni.ReadBool('General', 'KeepLocalContext', True);
     Result.TimeoutSeconds := LIni.ReadInteger('General', 'TimeoutSeconds', 120);
