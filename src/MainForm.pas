@@ -50,8 +50,12 @@ type
   private
     FHistory: TChatMessageList;
     FTranscriptMarkdown: TStringBuilder;
+    FSettings: TLLMSettings;
+    FActiveProvider: TLLMProvider;
     procedure LoadLocalSettings;
     procedure SaveLocalSettings;
+    procedure StoreVisibleSecret;
+    procedure DisplaySecretForProvider(const AProvider: TLLMProvider);
     function SelectedProvider: TLLMProvider;
     function CurrentSettings: TLLMSettings;
     function BuildMessages(const AText: string): TChatMessageList;
@@ -76,6 +80,8 @@ procedure TfrmMain.FormCreate(Sender: TObject);
 begin
   FHistory := TChatMessageList.Create;
   FTranscriptMarkdown := TStringBuilder.Create;
+  FSettings := TLLMConfigStore.DefaultSettings;
+  FActiveProvider := FSettings.Provider;
 
   cbProvider.Items.Clear;
   cbProvider.Items.Add(ProviderToString(lpOpenAI));
@@ -97,27 +103,59 @@ begin
 end;
 
 procedure TfrmMain.LoadLocalSettings;
-var
-  S: TLLMSettings;
 begin
-  S := TLLMConfigStore.Load;
-  cbProvider.ItemIndex := Ord(S.Provider);
-  edtModel.Text := S.Model;
-  edtBaseUrl.Text := S.BaseUrl;
-  edtSessionKey.Text := S.OpenClawEndpoint;
-  chkKeepContext.Checked := S.KeepLocalContext;
+  FSettings := TLLMConfigStore.Load;
+  FActiveProvider := FSettings.Provider;
 
-  if S.Provider = lpOpenClaw then
-    edtSecret.Text := S.OpenClawToken
-  else
-    edtSecret.Text := S.ApiKey;
+  cbProvider.ItemIndex := Ord(FSettings.Provider);
+  edtModel.Text := FSettings.Model;
+  edtBaseUrl.Text := FSettings.BaseUrl;
+  edtSessionKey.Text := FSettings.OpenClawEndpoint;
+  chkKeepContext.Checked := FSettings.KeepLocalContext;
+  DisplaySecretForProvider(FSettings.Provider);
 
   UpdateProviderUi;
 end;
 
 procedure TfrmMain.SaveLocalSettings;
 begin
-  TLLMConfigStore.Save(CurrentSettings);
+  StoreVisibleSecret;
+  FSettings := CurrentSettings;
+  TLLMConfigStore.Save(FSettings);
+end;
+
+procedure TfrmMain.StoreVisibleSecret;
+var
+  OldProvider: TLLMProvider;
+begin
+  if FActiveProvider = lpOpenClaw then
+  begin
+    FSettings.OpenClawToken := edtSecret.Text.Trim;
+    Exit;
+  end;
+
+  OldProvider := FSettings.Provider;
+  try
+    FSettings.Provider := FActiveProvider;
+    SetApiKeyForProvider(FSettings, edtSecret.Text.Trim);
+  finally
+    FSettings.Provider := OldProvider;
+  end;
+end;
+
+procedure TfrmMain.DisplaySecretForProvider(const AProvider: TLLMProvider);
+var
+  TempSettings: TLLMSettings;
+begin
+  if AProvider = lpOpenClaw then
+  begin
+    edtSecret.Text := FSettings.OpenClawToken;
+    Exit;
+  end;
+
+  TempSettings := FSettings;
+  TempSettings.Provider := AProvider;
+  edtSecret.Text := ApiKeyForProvider(TempSettings);
 end;
 
 function TfrmMain.SelectedProvider: TLLMProvider;
@@ -130,11 +168,10 @@ end;
 
 function TfrmMain.CurrentSettings: TLLMSettings;
 begin
+  Result := FSettings;
   Result.Provider := SelectedProvider;
   Result.Model := edtModel.Text.Trim;
   Result.BaseUrl := edtBaseUrl.Text.Trim;
-  Result.ApiKey := '';
-  Result.OpenClawToken := '';
   Result.OpenClawEndpoint := edtSessionKey.Text.Trim;
   Result.KeepLocalContext := chkKeepContext.Checked;
   Result.TimeoutSeconds := 120;
@@ -149,20 +186,29 @@ begin
   if Result.Provider = lpOpenClaw then
     Result.OpenClawToken := edtSecret.Text.Trim
   else
-    Result.ApiKey := edtSecret.Text.Trim;
+  begin
+    SetApiKeyForProvider(Result, edtSecret.Text.Trim);
+    Result.ApiKey := ApiKeyForProvider(Result);
+  end;
 end;
 
 procedure TfrmMain.cbProviderChange(Sender: TObject);
 var
-  P: TLLMProvider;
+  NewProvider: TLLMProvider;
 begin
-  P := SelectedProvider;
-  edtModel.Text := DefaultModel(P);
-  edtBaseUrl.Text := DefaultBaseUrl(P);
+  StoreVisibleSecret;
 
-  if P = lpOpenClaw then
+  NewProvider := SelectedProvider;
+  FSettings.Provider := NewProvider;
+  FActiveProvider := NewProvider;
+
+  edtModel.Text := DefaultModel(NewProvider);
+  edtBaseUrl.Text := DefaultBaseUrl(NewProvider);
+
+  if NewProvider = lpOpenClaw then
     edtSessionKey.Text := DefaultOpenClawSessionKey;
 
+  DisplaySecretForProvider(NewProvider);
   UpdateProviderUi;
 end;
 
@@ -183,7 +229,7 @@ begin
   end
   else
   begin
-    lblSecret.Caption := 'API key';
+    lblSecret.Caption := ProviderToString(SelectedProvider) + ' API key';
     lblModel.Caption := 'Modelo';
     chkKeepContext.Caption := 'Manter contexto local';
   end;
