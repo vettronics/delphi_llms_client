@@ -41,7 +41,15 @@ begin
   Result.ClaudeApiKey := 'COLOCAR_CLAUDE_API_KEY_AQUI';
   Result.GrokApiKey := 'COLOCAR_GROK_API_KEY_AQUI';
   Result.OpenRouterApiKey := 'COLOCAR_OPENROUTER_API_KEY_AQUI';
-  Result.BaseUrl := DefaultBaseUrl(Result.Provider);
+
+  Result.OpenAIBaseUrl := DefaultBaseUrl(lpOpenAI);
+  Result.GeminiBaseUrl := DefaultBaseUrl(lpGemini);
+  Result.ClaudeBaseUrl := DefaultBaseUrl(lpClaude);
+  Result.GrokBaseUrl := DefaultBaseUrl(lpGrok);
+  Result.OpenRouterBaseUrl := DefaultBaseUrl(lpOpenRouter);
+  Result.OpenClawBaseUrl := DefaultBaseUrl(lpOpenClaw);
+  Result.BaseUrl := BaseUrlForProvider(Result);
+
   Result.OpenClawToken := 'COLOCAR_TOKEN_OPENCLAW_AQUI';
   Result.OpenClawEndpoint := DefaultOpenClawSessionKey;
   Result.KeepLocalContext := True;
@@ -67,7 +75,18 @@ begin
   try
     Result.Provider := StringToProvider(LIni.ReadString('General', 'Provider', ProviderToString(Result.Provider)));
     Result.Model := LIni.ReadString('General', 'Model', DefaultModel(Result.Provider));
-    Result.BaseUrl := LIni.ReadString('General', 'BaseUrl', DefaultBaseUrl(Result.Provider));
+
+    Result.OpenAIBaseUrl := LIni.ReadString('BaseUrls', 'OpenAI', Result.OpenAIBaseUrl);
+    Result.GeminiBaseUrl := LIni.ReadString('BaseUrls', 'Gemini', Result.GeminiBaseUrl);
+    Result.ClaudeBaseUrl := LIni.ReadString('BaseUrls', 'Claude', Result.ClaudeBaseUrl);
+    Result.GrokBaseUrl := LIni.ReadString('BaseUrls', 'Grok', Result.GrokBaseUrl);
+    Result.OpenRouterBaseUrl := LIni.ReadString('BaseUrls', 'OpenRouter', Result.OpenRouterBaseUrl);
+    Result.OpenClawBaseUrl := LIni.ReadString('BaseUrls', 'OpenClaw', Result.OpenClawBaseUrl);
+
+    Result.BaseUrl := LIni.ReadString('General', 'BaseUrl', '');
+    if Result.BaseUrl <> '' then
+      SetBaseUrlForProvider(Result, Result.BaseUrl);
+    Result.BaseUrl := BaseUrlForProvider(Result);
 
     Result.OpenAIApiKey := LIni.ReadString('Secrets', 'OpenAIApiKey', Result.OpenAIApiKey);
     Result.GeminiApiKey := LIni.ReadString('Secrets', 'GeminiApiKey', Result.GeminiApiKey);
@@ -85,11 +104,11 @@ begin
     Result.KeepLocalContext := LIni.ReadBool('General', 'KeepLocalContext', True);
     Result.TimeoutSeconds := LIni.ReadInteger('General', 'TimeoutSeconds', 120);
 
-    if Result.Model.Trim = '' then
+    if Trim(Result.Model) = '' then
       Result.Model := DefaultModel(Result.Provider);
-    if Result.BaseUrl.Trim = '' then
+    if Trim(Result.BaseUrl) = '' then
       Result.BaseUrl := DefaultBaseUrl(Result.Provider);
-    if Result.OpenClawEndpoint.Trim = '' then
+    if Trim(Result.OpenClawEndpoint) = '' then
       Result.OpenClawEndpoint := DefaultOpenClawSessionKey;
     if Result.TimeoutSeconds < 10 then
       Result.TimeoutSeconds := 10;
@@ -106,9 +125,16 @@ begin
   try
     LIni.WriteString('General', 'Provider', ProviderToString(ASettings.Provider));
     LIni.WriteString('General', 'Model', ASettings.Model);
-    LIni.WriteString('General', 'BaseUrl', ASettings.BaseUrl);
+    LIni.WriteString('General', 'BaseUrl', BaseUrlForProvider(ASettings));
     LIni.WriteBool('General', 'KeepLocalContext', ASettings.KeepLocalContext);
     LIni.WriteInteger('General', 'TimeoutSeconds', ASettings.TimeoutSeconds);
+
+    LIni.WriteString('BaseUrls', 'OpenAI', ASettings.OpenAIBaseUrl);
+    LIni.WriteString('BaseUrls', 'Gemini', ASettings.GeminiBaseUrl);
+    LIni.WriteString('BaseUrls', 'Claude', ASettings.ClaudeBaseUrl);
+    LIni.WriteString('BaseUrls', 'Grok', ASettings.GrokBaseUrl);
+    LIni.WriteString('BaseUrls', 'OpenRouter', ASettings.OpenRouterBaseUrl);
+    LIni.WriteString('BaseUrls', 'OpenClaw', ASettings.OpenClawBaseUrl);
 
     LIni.WriteString('Secrets', 'OpenAIApiKey', ASettings.OpenAIApiKey);
     LIni.WriteString('Secrets', 'GeminiApiKey', ASettings.GeminiApiKey);
