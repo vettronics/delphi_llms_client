@@ -130,14 +130,14 @@ var
 begin
   if FActiveProvider = lpOpenClaw then
   begin
-    FSettings.OpenClawToken := edtSecret.Text.Trim;
+    FSettings.OpenClawToken := Trim(edtSecret.Text);
     Exit;
   end;
 
   OldProvider := FSettings.Provider;
   try
     FSettings.Provider := FActiveProvider;
-    SetApiKeyForProvider(FSettings, edtSecret.Text.Trim);
+    SetApiKeyForProvider(FSettings, Trim(edtSecret.Text));
   finally
     FSettings.Provider := OldProvider;
   end;
@@ -170,9 +170,9 @@ function TfrmMain.CurrentSettings: TLLMSettings;
 begin
   Result := FSettings;
   Result.Provider := SelectedProvider;
-  Result.Model := edtModel.Text.Trim;
-  Result.BaseUrl := edtBaseUrl.Text.Trim;
-  Result.OpenClawEndpoint := edtSessionKey.Text.Trim;
+  Result.Model := Trim(edtModel.Text);
+  Result.BaseUrl := Trim(edtBaseUrl.Text);
+  Result.OpenClawEndpoint := Trim(edtSessionKey.Text);
   Result.KeepLocalContext := chkKeepContext.Checked;
   Result.TimeoutSeconds := 120;
 
@@ -184,10 +184,10 @@ begin
     Result.OpenClawEndpoint := DefaultOpenClawSessionKey;
 
   if Result.Provider = lpOpenClaw then
-    Result.OpenClawToken := edtSecret.Text.Trim
+    Result.OpenClawToken := Trim(edtSecret.Text)
   else
   begin
-    SetApiKeyForProvider(Result, edtSecret.Text.Trim);
+    SetApiKeyForProvider(Result, Trim(edtSecret.Text));
     Result.ApiKey := ApiKeyForProvider(Result);
   end;
 end;
@@ -293,7 +293,7 @@ var
   OutMsgs: TChatMessageList;
   Settings: TLLMSettings;
 begin
-  Msg := memPrompt.Text.Trim;
+  Msg := Trim(memPrompt.Text);
   if Msg = '' then
     Exit;
 
