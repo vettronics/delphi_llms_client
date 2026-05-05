@@ -64,11 +64,13 @@ type
     procedure SaveLocalSettings;
     procedure StoreVisibleProviderFields;
     procedure DisplayProviderFields(const AProvider: TLLMProvider);
+    procedure memPromptKeyPress(Sender: TObject; var Key: Char);
     function SelectedProvider: TLLMProvider;
     function CurrentSettings: TLLMSettings;
     function BuildMessages(const AText: string): TChatMessageList;
     procedure AddToChat(const ATitle, AText: string);
     procedure RenderChat;
+    procedure ScrollChatToEnd;
     procedure SetBusy(const AValue: Boolean);
     procedure UpdateProviderUi;
   end;
@@ -82,6 +84,7 @@ implementation
 
 uses
   Winapi.Windows,
+  Winapi.Messages,
   MarkdownRenderer;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
@@ -96,6 +99,8 @@ begin
   FBusyLabel := nil;
   FBusyTimer := nil;
   EnsureBusyIndicator;
+
+  memPrompt.OnKeyPress := memPromptKeyPress;
 
   cbProvider.Items.Clear;
   cbProvider.Items.Add(ProviderToString(lpOpenAI));
@@ -118,7 +123,7 @@ begin
     FBusyLabel.Parent := pnlTop;
     FBusyLabel.Left := 12;
     FBusyLabel.Top := 124;
-    FBusyLabel.Width := 320;
+    FBusyLabel.Width := 420;
     FBusyLabel.Height := 17;
     FBusyLabel.Caption := '';
     FBusyLabel.Visible := False;
@@ -325,12 +330,28 @@ begin
   if chkVisualMarkdown.Checked then
   begin
     TMarkdownRenderer.RenderToRichEdit(reChat, Text);
-    reChat.SelStart := Length(reChat.Text);
   end
   else
   begin
     memChat.Text := Text;
+  end;
+
+  ScrollChatToEnd;
+end;
+
+procedure TfrmMain.ScrollChatToEnd;
+begin
+  if chkVisualMarkdown.Checked then
+  begin
+    reChat.SelStart := Length(reChat.Text);
+    reChat.SelLength := 0;
+    reChat.Perform(EM_SCROLLCARET, 0, 0);
+  end
+  else
+  begin
     memChat.SelStart := Length(memChat.Text);
+    memChat.SelLength := 0;
+    memChat.Perform(EM_SCROLLCARET, 0, 0);
   end;
 end;
 
@@ -359,6 +380,8 @@ begin
 
   AddToChat('Utilizador', Msg);
   memPrompt.Clear;
+  memPrompt.Text := '';
+  memPrompt.SelStart := 0;
   SetBusy(True);
   memPrompt.SetFocus;
 
@@ -445,6 +468,12 @@ begin
   end;
 end;
 
+procedure TfrmMain.memPromptKeyPress(Sender: TObject; var Key: Char);
+begin
+  if (Key = #13) and (GetKeyState(VK_SHIFT) >= 0) then
+    Key := #0;
+end;
+
 procedure TfrmMain.BusyTimer(Sender: TObject);
 const
   FRAMES: array[0..3] of string = ('|', '/', '-', '\');
@@ -483,7 +512,7 @@ begin
   begin
     FBusyFrame := 0;
     FBusyLabel.Caption := '| A aguardar resposta... pode escrever a próxima mensagem';
-    Screen.Cursor := crHourGlass;
+    Screen.Cursor := crDefault;
   end
   else
   begin
