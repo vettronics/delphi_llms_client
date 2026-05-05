@@ -54,6 +54,7 @@ type
     FSettings: TLLMSettings;
     FActiveProvider: TLLMProvider;
     FLoadingSettings: Boolean;
+    FRequestRunning: Boolean;
     FBusyFrame: Integer;
     FBusyLabel: TLabel;
     FBusyTimer: TTimer;
@@ -90,6 +91,7 @@ begin
   FSettings := TLLMConfigStore.DefaultSettings;
   FActiveProvider := FSettings.Provider;
   FLoadingSettings := False;
+  FRequestRunning := False;
   FBusyFrame := 0;
   FBusyLabel := nil;
   FBusyTimer := nil;
@@ -344,6 +346,9 @@ var
   Settings: TLLMSettings;
   Worker: TThread;
 begin
+  if FRequestRunning then
+    Exit;
+
   Msg := Trim(memPrompt.Text);
   if Msg = '' then
     Exit;
@@ -355,6 +360,7 @@ begin
   AddToChat('Utilizador', Msg);
   memPrompt.Clear;
   SetBusy(True);
+  memPrompt.SetFocus;
 
   Worker := TThread.CreateAnonymousThread(
     procedure
@@ -406,6 +412,7 @@ begin
           end;
 
           SetBusy(False);
+          memPrompt.SetFocus;
         end);
     end);
 
@@ -433,7 +440,8 @@ begin
   if (Key = VK_RETURN) and not (ssShift in Shift) then
   begin
     Key := 0;
-    btnSendClick(Sender);
+    if not FRequestRunning then
+      btnSendClick(Sender);
   end;
 end;
 
@@ -446,12 +454,13 @@ begin
     FBusyFrame := Low(FRAMES);
 
   if FBusyLabel <> nil then
-    FBusyLabel.Caption := FRAMES[FBusyFrame] + ' A aguardar resposta...';
+    FBusyLabel.Caption := FRAMES[FBusyFrame] + ' A aguardar resposta... pode escrever a próxima mensagem';
 end;
 
 procedure TfrmMain.SetBusy(const AValue: Boolean);
 begin
   EnsureBusyIndicator;
+  FRequestRunning := AValue;
 
   btnSend.Enabled := not AValue;
   btnClear.Enabled := not AValue;
@@ -463,7 +472,9 @@ begin
   chkKeepContext.Enabled := not AValue;
   chkVisualMarkdown.Enabled := not AValue;
   edtSessionKey.Enabled := (not AValue) and (SelectedProvider = lpOpenClaw);
-  memPrompt.Enabled := not AValue;
+
+  memPrompt.Enabled := True;
+  memPrompt.ReadOnly := False;
 
   FBusyLabel.Visible := AValue;
   FBusyTimer.Enabled := AValue;
@@ -471,7 +482,7 @@ begin
   if AValue then
   begin
     FBusyFrame := 0;
-    FBusyLabel.Caption := '| A aguardar resposta...';
+    FBusyLabel.Caption := '| A aguardar resposta... pode escrever a próxima mensagem';
     Screen.Cursor := crHourGlass;
   end
   else
