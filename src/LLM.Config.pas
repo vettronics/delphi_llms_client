@@ -34,7 +34,15 @@ end;
 class function TLLMConfigStore.DefaultSettings: TLLMSettings;
 begin
   Result.Provider := lpOpenAI;
-  Result.Model := DefaultModel(Result.Provider);
+
+  Result.OpenAIModel := DefaultModel(lpOpenAI);
+  Result.GeminiModel := DefaultModel(lpGemini);
+  Result.ClaudeModel := DefaultModel(lpClaude);
+  Result.GrokModel := DefaultModel(lpGrok);
+  Result.OpenRouterModel := DefaultModel(lpOpenRouter);
+  Result.OpenClawModel := DefaultModel(lpOpenClaw);
+  Result.Model := ModelForProvider(Result);
+
   Result.ApiKey := '';
   Result.OpenAIApiKey := 'COLOCAR_OPENAI_API_KEY_AQUI';
   Result.GeminiApiKey := 'COLOCAR_GEMINI_API_KEY_AQUI';
@@ -74,7 +82,18 @@ begin
   LIni := TIniFile.Create(LFileName);
   try
     Result.Provider := StringToProvider(LIni.ReadString('General', 'Provider', ProviderToString(Result.Provider)));
-    Result.Model := LIni.ReadString('General', 'Model', DefaultModel(Result.Provider));
+
+    Result.OpenAIModel := LIni.ReadString('Models', 'OpenAI', Result.OpenAIModel);
+    Result.GeminiModel := LIni.ReadString('Models', 'Gemini', Result.GeminiModel);
+    Result.ClaudeModel := LIni.ReadString('Models', 'Claude', Result.ClaudeModel);
+    Result.GrokModel := LIni.ReadString('Models', 'Grok', Result.GrokModel);
+    Result.OpenRouterModel := LIni.ReadString('Models', 'OpenRouter', Result.OpenRouterModel);
+    Result.OpenClawModel := LIni.ReadString('Models', 'OpenClaw', Result.OpenClawModel);
+
+    Result.Model := LIni.ReadString('General', 'Model', '');
+    if Result.Model <> '' then
+      SetModelForProvider(Result, Result.Model);
+    Result.Model := ModelForProvider(Result);
 
     Result.OpenAIBaseUrl := LIni.ReadString('BaseUrls', 'OpenAI', Result.OpenAIBaseUrl);
     Result.GeminiBaseUrl := LIni.ReadString('BaseUrls', 'Gemini', Result.GeminiBaseUrl);
@@ -124,10 +143,17 @@ begin
   LIni := TIniFile.Create(SettingsFileName);
   try
     LIni.WriteString('General', 'Provider', ProviderToString(ASettings.Provider));
-    LIni.WriteString('General', 'Model', ASettings.Model);
+    LIni.WriteString('General', 'Model', ModelForProvider(ASettings));
     LIni.WriteString('General', 'BaseUrl', BaseUrlForProvider(ASettings));
     LIni.WriteBool('General', 'KeepLocalContext', ASettings.KeepLocalContext);
     LIni.WriteInteger('General', 'TimeoutSeconds', ASettings.TimeoutSeconds);
+
+    LIni.WriteString('Models', 'OpenAI', ASettings.OpenAIModel);
+    LIni.WriteString('Models', 'Gemini', ASettings.GeminiModel);
+    LIni.WriteString('Models', 'Claude', ASettings.ClaudeModel);
+    LIni.WriteString('Models', 'Grok', ASettings.GrokModel);
+    LIni.WriteString('Models', 'OpenRouter', ASettings.OpenRouterModel);
+    LIni.WriteString('Models', 'OpenClaw', ASettings.OpenClawModel);
 
     LIni.WriteString('BaseUrls', 'OpenAI', ASettings.OpenAIBaseUrl);
     LIni.WriteString('BaseUrls', 'Gemini', ASettings.GeminiBaseUrl);
