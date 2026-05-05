@@ -307,8 +307,10 @@ var
   LResponse: string;
   LUrl: string;
   LHeaders: TNetHeaders;
+  LApiKey: string;
 begin
-  RequireSecret('API key', Settings.ApiKey);
+  LApiKey := ApiKeyForProvider(Settings);
+  RequireSecret(ProviderToString(Settings.Provider) + ' API key', LApiKey);
 
   LMessages := MessagesToOpenAIJson(AMessages);
   LBody := TJSONObject.Create;
@@ -320,7 +322,7 @@ begin
     LUrl := JoinUrl(Settings.BaseUrl, '/chat/completions');
     LHeaders := [
       TNameValuePair.Create('Content-Type', 'application/json'),
-      TNameValuePair.Create('Authorization', 'Bearer ' + Settings.ApiKey),
+      TNameValuePair.Create('Authorization', 'Bearer ' + LApiKey),
       TNameValuePair.Create('HTTP-Referer', 'https://github.com/vettronics/delphi_llms_client'),
       TNameValuePair.Create('X-Title', 'Delphi LLMs Client')
     ];
@@ -345,8 +347,10 @@ var
   LResponse: string;
   LUrl: string;
   LHeaders: TNetHeaders;
+  LApiKey: string;
 begin
-  RequireSecret('API key', Settings.ApiKey);
+  LApiKey := ApiKeyForProvider(Settings);
+  RequireSecret('Gemini API key', LApiKey);
 
   LBody := TJSONObject.Create;
   LContents := TJSONArray.Create;
@@ -369,7 +373,7 @@ begin
     end;
 
     LBody.AddPair('contents', LContents);
-    LUrl := JoinUrl(Settings.BaseUrl, Format('/models/%s:generateContent?key=%s', [Settings.Model, Settings.ApiKey]));
+    LUrl := JoinUrl(Settings.BaseUrl, Format('/models/%s:generateContent?key=%s', [Settings.Model, LApiKey]));
     LHeaders := [TNameValuePair.Create('Content-Type', 'application/json')];
 
     LResponse := SendJson(LUrl, LBody.ToJSON, LHeaders);
@@ -390,8 +394,10 @@ var
   LResponse: string;
   LUrl: string;
   LHeaders: TNetHeaders;
+  LApiKey: string;
 begin
-  RequireSecret('API key', Settings.ApiKey);
+  LApiKey := ApiKeyForProvider(Settings);
+  RequireSecret('Claude API key', LApiKey);
 
   LMessages := MessagesToOpenAIJson(AMessages);
   LBody := TJSONObject.Create;
@@ -403,7 +409,7 @@ begin
     LUrl := JoinUrl(Settings.BaseUrl, '/messages');
     LHeaders := [
       TNameValuePair.Create('Content-Type', 'application/json'),
-      TNameValuePair.Create('x-api-key', Settings.ApiKey),
+      TNameValuePair.Create('x-api-key', LApiKey),
       TNameValuePair.Create('anthropic-version', '2023-06-01')
     ];
 
