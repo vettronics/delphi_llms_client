@@ -27,6 +27,12 @@ type
     GrokApiKey: string;
     OpenRouterApiKey: string;
     BaseUrl: string;
+    OpenAIBaseUrl: string;
+    GeminiBaseUrl: string;
+    ClaudeBaseUrl: string;
+    GrokBaseUrl: string;
+    OpenRouterBaseUrl: string;
+    OpenClawBaseUrl: string;
     OpenClawToken: string;
     OpenClawEndpoint: string;
     KeepLocalContext: Boolean;
@@ -41,6 +47,8 @@ function ProviderUsesToken(const AProvider: TLLMProvider): Boolean;
 function DefaultOpenClawSessionKey: string;
 function ApiKeyForProvider(const ASettings: TLLMSettings): string;
 procedure SetApiKeyForProvider(var ASettings: TLLMSettings; const AApiKey: string);
+function BaseUrlForProvider(const ASettings: TLLMSettings): string;
+procedure SetBaseUrlForProvider(var ASettings: TLLMSettings; const ABaseUrl: string);
 
 implementation
 
@@ -87,7 +95,7 @@ begin
     lpClaude: Result := 'https://api.anthropic.com/v1';
     lpGrok: Result := 'https://api.x.ai/v1';
     lpOpenRouter: Result := 'https://openrouter.ai/api/v1';
-    lpOpenClaw: Result := 'http://127.0.0.1:18789';
+    lpOpenClaw: Result := 'http://192.168.93.35:18789';
   else
     Result := '';
   end;
@@ -143,6 +151,38 @@ begin
     lpOpenRouter: ASettings.OpenRouterApiKey := AApiKey;
   end;
   ASettings.ApiKey := AApiKey;
+end;
+
+function BaseUrlForProvider(const ASettings: TLLMSettings): string;
+begin
+  case ASettings.Provider of
+    lpOpenAI: Result := ASettings.OpenAIBaseUrl;
+    lpGemini: Result := ASettings.GeminiBaseUrl;
+    lpClaude: Result := ASettings.ClaudeBaseUrl;
+    lpGrok: Result := ASettings.GrokBaseUrl;
+    lpOpenRouter: Result := ASettings.OpenRouterBaseUrl;
+    lpOpenClaw: Result := ASettings.OpenClawBaseUrl;
+  else
+    Result := '';
+  end;
+
+  if Result = '' then
+    Result := ASettings.BaseUrl;
+  if Result = '' then
+    Result := DefaultBaseUrl(ASettings.Provider);
+end;
+
+procedure SetBaseUrlForProvider(var ASettings: TLLMSettings; const ABaseUrl: string);
+begin
+  case ASettings.Provider of
+    lpOpenAI: ASettings.OpenAIBaseUrl := ABaseUrl;
+    lpGemini: ASettings.GeminiBaseUrl := ABaseUrl;
+    lpClaude: ASettings.ClaudeBaseUrl := ABaseUrl;
+    lpGrok: ASettings.GrokBaseUrl := ABaseUrl;
+    lpOpenRouter: ASettings.OpenRouterBaseUrl := ABaseUrl;
+    lpOpenClaw: ASettings.OpenClawBaseUrl := ABaseUrl;
+  end;
+  ASettings.BaseUrl := ABaseUrl;
 end;
 
 end.
