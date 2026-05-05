@@ -57,10 +57,7 @@ begin
 end;
 
 function StringToProvider(const AValue: string): TLLMProvider;
-var
-  S: string;
 begin
-  S := SameText(AValue, 'OpenAI').ToString;
   if SameText(AValue, 'Gemini') then
     Exit(lpGemini);
   if SameText(AValue, 'Claude') then
