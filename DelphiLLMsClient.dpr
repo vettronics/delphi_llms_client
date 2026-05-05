@@ -6,6 +6,7 @@ uses
   LLM.Types in 'src\LLM.Types.pas',
   LLM.Config in 'src\LLM.Config.pas',
   LLM.ChatClients in 'src\LLM.ChatClients.pas',
+  MarkdownRenderer in 'src\MarkdownRenderer.pas',
   OpenClawClient in 'OpenClawClient.pas';
 
 begin
