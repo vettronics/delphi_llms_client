@@ -108,7 +108,6 @@ begin
   FActiveProvider := FSettings.Provider;
 
   cbProvider.ItemIndex := Ord(FSettings.Provider);
-  edtModel.Text := FSettings.Model;
   edtSessionKey.Text := FSettings.OpenClawEndpoint;
   chkKeepContext.Checked := FSettings.KeepLocalContext;
   DisplayProviderFields(FSettings.Provider);
@@ -130,6 +129,7 @@ begin
   OldProvider := FSettings.Provider;
   try
     FSettings.Provider := FActiveProvider;
+    SetModelForProvider(FSettings, Trim(edtModel.Text));
     SetBaseUrlForProvider(FSettings, Trim(edtBaseUrl.Text));
 
     if FActiveProvider = lpOpenClaw then
@@ -147,6 +147,8 @@ var
 begin
   TempSettings := FSettings;
   TempSettings.Provider := AProvider;
+
+  edtModel.Text := ModelForProvider(TempSettings);
   edtBaseUrl.Text := BaseUrlForProvider(TempSettings);
 
   if AProvider = lpOpenClaw then
@@ -167,19 +169,20 @@ function TfrmMain.CurrentSettings: TLLMSettings;
 begin
   Result := FSettings;
   Result.Provider := SelectedProvider;
-  Result.Model := Trim(edtModel.Text);
   Result.OpenClawEndpoint := Trim(edtSessionKey.Text);
   Result.KeepLocalContext := chkKeepContext.Checked;
   Result.TimeoutSeconds := 120;
 
+  SetModelForProvider(Result, Trim(edtModel.Text));
   if Result.Model = '' then
-    Result.Model := DefaultModel(Result.Provider);
-  if Result.OpenClawEndpoint = '' then
-    Result.OpenClawEndpoint := DefaultOpenClawSessionKey;
+    SetModelForProvider(Result, DefaultModel(Result.Provider));
 
   SetBaseUrlForProvider(Result, Trim(edtBaseUrl.Text));
   if Result.BaseUrl = '' then
     SetBaseUrlForProvider(Result, DefaultBaseUrl(Result.Provider));
+
+  if Result.OpenClawEndpoint = '' then
+    Result.OpenClawEndpoint := DefaultOpenClawSessionKey;
 
   if Result.Provider = lpOpenClaw then
     Result.OpenClawToken := Trim(edtSecret.Text)
@@ -199,8 +202,6 @@ begin
   NewProvider := SelectedProvider;
   FSettings.Provider := NewProvider;
   FActiveProvider := NewProvider;
-
-  edtModel.Text := DefaultModel(NewProvider);
 
   if NewProvider = lpOpenClaw then
     edtSessionKey.Text := DefaultOpenClawSessionKey;
@@ -227,7 +228,7 @@ begin
   else
   begin
     lblSecret.Caption := ProviderToString(SelectedProvider) + ' API key';
-    lblModel.Caption := 'Modelo';
+    lblModel.Caption := ProviderToString(SelectedProvider) + ' model';
     chkKeepContext.Caption := 'Manter contexto local';
   end;
 end;
