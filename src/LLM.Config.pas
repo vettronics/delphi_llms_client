@@ -40,7 +40,7 @@ begin
   Result.ApiKey := '';
   Result.BaseUrl := DefaultBaseUrl(Result.Provider);
   Result.OpenClawToken := '';
-  Result.OpenClawEndpoint := '/api/chat';
+  Result.OpenClawEndpoint := DefaultOpenClawSessionKey;
   Result.KeepLocalContext := True;
   Result.TimeoutSeconds := 120;
 
@@ -55,7 +55,7 @@ begin
     Result.BaseUrl := LIni.ReadString('General', 'BaseUrl', DefaultBaseUrl(Result.Provider));
     Result.ApiKey := LIni.ReadString('Secrets', 'ApiKey', '');
     Result.OpenClawToken := LIni.ReadString('Secrets', 'OpenClawToken', '');
-    Result.OpenClawEndpoint := LIni.ReadString('OpenClaw', 'Endpoint', '/api/chat');
+    Result.OpenClawEndpoint := LIni.ReadString('OpenClaw', 'Endpoint', DefaultOpenClawSessionKey);
     Result.KeepLocalContext := LIni.ReadBool('General', 'KeepLocalContext', True);
     Result.TimeoutSeconds := LIni.ReadInteger('General', 'TimeoutSeconds', 120);
 
@@ -63,6 +63,8 @@ begin
       Result.Model := DefaultModel(Result.Provider);
     if Result.BaseUrl.Trim = '' then
       Result.BaseUrl := DefaultBaseUrl(Result.Provider);
+    if Result.OpenClawEndpoint.Trim = '' then
+      Result.OpenClawEndpoint := DefaultOpenClawSessionKey;
     if Result.TimeoutSeconds < 10 then
       Result.TimeoutSeconds := 10;
   finally
