@@ -33,6 +33,7 @@ function StringToProvider(const AValue: string): TLLMProvider;
 function DefaultBaseUrl(const AProvider: TLLMProvider): string;
 function DefaultModel(const AProvider: TLLMProvider): string;
 function ProviderUsesToken(const AProvider: TLLMProvider): Boolean;
+function DefaultOpenClawSessionKey: string;
 
 implementation
 
@@ -93,7 +94,7 @@ begin
     lpClaude: Result := 'claude-3-5-sonnet-latest';
     lpGrok: Result := 'grok-2-latest';
     lpOpenRouter: Result := 'openai/gpt-4o-mini';
-    lpOpenClaw: Result := 'main';
+    lpOpenClaw: Result := 'openclaw/default';
   else
     Result := '';
   end;
@@ -102,6 +103,11 @@ end;
 function ProviderUsesToken(const AProvider: TLLMProvider): Boolean;
 begin
   Result := AProvider = lpOpenClaw;
+end;
+
+function DefaultOpenClawSessionKey: string;
+begin
+  Result := 'DelphiClient-default';
 end;
 
 end.
