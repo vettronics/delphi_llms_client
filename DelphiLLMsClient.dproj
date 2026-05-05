@@ -45,6 +45,7 @@
         <DCCReference Include="src\LLM.Types.pas"/>
         <DCCReference Include="src\LLM.Config.pas"/>
         <DCCReference Include="src\LLM.ChatClients.pas"/>
+        <DCCReference Include="src\MarkdownRenderer.pas"/>
         <DCCReference Include="OpenClawClient.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
