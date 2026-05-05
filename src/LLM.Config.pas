@@ -35,12 +35,18 @@ class function TLLMConfigStore.DefaultSettings: TLLMSettings;
 begin
   Result.Provider := lpOpenAI;
   Result.Model := DefaultModel(Result.Provider);
-  Result.ApiKey := 'COLOCAR_API_KEY_AQUI';
+  Result.ApiKey := '';
+  Result.OpenAIApiKey := 'COLOCAR_OPENAI_API_KEY_AQUI';
+  Result.GeminiApiKey := 'COLOCAR_GEMINI_API_KEY_AQUI';
+  Result.ClaudeApiKey := 'COLOCAR_CLAUDE_API_KEY_AQUI';
+  Result.GrokApiKey := 'COLOCAR_GROK_API_KEY_AQUI';
+  Result.OpenRouterApiKey := 'COLOCAR_OPENROUTER_API_KEY_AQUI';
   Result.BaseUrl := DefaultBaseUrl(Result.Provider);
   Result.OpenClawToken := 'COLOCAR_TOKEN_OPENCLAW_AQUI';
   Result.OpenClawEndpoint := DefaultOpenClawSessionKey;
   Result.KeepLocalContext := True;
   Result.TimeoutSeconds := 120;
+  Result.ApiKey := ApiKeyForProvider(Result);
 end;
 
 class function TLLMConfigStore.Load: TLLMSettings;
@@ -62,7 +68,18 @@ begin
     Result.Provider := StringToProvider(LIni.ReadString('General', 'Provider', ProviderToString(Result.Provider)));
     Result.Model := LIni.ReadString('General', 'Model', DefaultModel(Result.Provider));
     Result.BaseUrl := LIni.ReadString('General', 'BaseUrl', DefaultBaseUrl(Result.Provider));
-    Result.ApiKey := LIni.ReadString('Secrets', 'ApiKey', Result.ApiKey);
+
+    Result.OpenAIApiKey := LIni.ReadString('Secrets', 'OpenAIApiKey', Result.OpenAIApiKey);
+    Result.GeminiApiKey := LIni.ReadString('Secrets', 'GeminiApiKey', Result.GeminiApiKey);
+    Result.ClaudeApiKey := LIni.ReadString('Secrets', 'ClaudeApiKey', Result.ClaudeApiKey);
+    Result.GrokApiKey := LIni.ReadString('Secrets', 'GrokApiKey', Result.GrokApiKey);
+    Result.OpenRouterApiKey := LIni.ReadString('Secrets', 'OpenRouterApiKey', Result.OpenRouterApiKey);
+
+    Result.ApiKey := LIni.ReadString('Secrets', 'ApiKey', '');
+    if Result.ApiKey <> '' then
+      SetApiKeyForProvider(Result, Result.ApiKey);
+    Result.ApiKey := ApiKeyForProvider(Result);
+
     Result.OpenClawToken := LIni.ReadString('Secrets', 'OpenClawToken', Result.OpenClawToken);
     Result.OpenClawEndpoint := LIni.ReadString('OpenClaw', 'Endpoint', DefaultOpenClawSessionKey);
     Result.KeepLocalContext := LIni.ReadBool('General', 'KeepLocalContext', True);
@@ -93,8 +110,14 @@ begin
     LIni.WriteBool('General', 'KeepLocalContext', ASettings.KeepLocalContext);
     LIni.WriteInteger('General', 'TimeoutSeconds', ASettings.TimeoutSeconds);
 
-    LIni.WriteString('Secrets', 'ApiKey', ASettings.ApiKey);
+    LIni.WriteString('Secrets', 'OpenAIApiKey', ASettings.OpenAIApiKey);
+    LIni.WriteString('Secrets', 'GeminiApiKey', ASettings.GeminiApiKey);
+    LIni.WriteString('Secrets', 'ClaudeApiKey', ASettings.ClaudeApiKey);
+    LIni.WriteString('Secrets', 'GrokApiKey', ASettings.GrokApiKey);
+    LIni.WriteString('Secrets', 'OpenRouterApiKey', ASettings.OpenRouterApiKey);
+    LIni.WriteString('Secrets', 'ApiKey', ApiKeyForProvider(ASettings));
     LIni.WriteString('Secrets', 'OpenClawToken', ASettings.OpenClawToken);
+
     LIni.WriteString('OpenClaw', 'Endpoint', ASettings.OpenClawEndpoint);
   finally
     LIni.Free;
