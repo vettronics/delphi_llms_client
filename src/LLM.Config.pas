@@ -89,10 +89,6 @@ begin
     Result.GrokModel := LIni.ReadString('Models', 'Grok', Result.GrokModel);
     Result.OpenRouterModel := LIni.ReadString('Models', 'OpenRouter', Result.OpenRouterModel);
     Result.OpenClawModel := LIni.ReadString('Models', 'OpenClaw', Result.OpenClawModel);
-
-    Result.Model := LIni.ReadString('General', 'Model', '');
-    if Result.Model <> '' then
-      SetModelForProvider(Result, Result.Model);
     Result.Model := ModelForProvider(Result);
 
     Result.OpenAIBaseUrl := LIni.ReadString('BaseUrls', 'OpenAI', Result.OpenAIBaseUrl);
@@ -101,10 +97,6 @@ begin
     Result.GrokBaseUrl := LIni.ReadString('BaseUrls', 'Grok', Result.GrokBaseUrl);
     Result.OpenRouterBaseUrl := LIni.ReadString('BaseUrls', 'OpenRouter', Result.OpenRouterBaseUrl);
     Result.OpenClawBaseUrl := LIni.ReadString('BaseUrls', 'OpenClaw', Result.OpenClawBaseUrl);
-
-    Result.BaseUrl := LIni.ReadString('General', 'BaseUrl', '');
-    if Result.BaseUrl <> '' then
-      SetBaseUrlForProvider(Result, Result.BaseUrl);
     Result.BaseUrl := BaseUrlForProvider(Result);
 
     Result.OpenAIApiKey := LIni.ReadString('Secrets', 'OpenAIApiKey', Result.OpenAIApiKey);
@@ -113,9 +105,6 @@ begin
     Result.GrokApiKey := LIni.ReadString('Secrets', 'GrokApiKey', Result.GrokApiKey);
     Result.OpenRouterApiKey := LIni.ReadString('Secrets', 'OpenRouterApiKey', Result.OpenRouterApiKey);
 
-    Result.ApiKey := LIni.ReadString('Secrets', 'ApiKey', '');
-    if Result.ApiKey <> '' then
-      SetApiKeyForProvider(Result, Result.ApiKey);
     Result.ApiKey := ApiKeyForProvider(Result);
 
     Result.OpenClawToken := LIni.ReadString('Secrets', 'OpenClawToken', Result.OpenClawToken);
