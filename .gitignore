@@ -1,0 +1,33 @@
+# Delphi build artefacts
+__history/
+__recovery/
+*.local
+*.identcache
+*.dsk
+*.map
+*.stat
+*.tvsconfig
+*.dproj.local
+*.res
+*.drc
+*.dcu
+*.obj
+*.hpp
+*.bpl
+*.bpi
+*.so
+*.dll
+*.exe
+*.apk
+*.ipa
+*.deployproj
+
+# Build folders
+Win32/
+Win64/
+Debug/
+Release/
+
+# Secrets
+*.env
+settings.ini
