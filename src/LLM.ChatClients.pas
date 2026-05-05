@@ -25,6 +25,7 @@ type
     function SendJson(const AUrl, AJson: string; const AHeaders: TNetHeaders): string;
     function MessagesToOpenAIJson(const AMessages: TChatMessageList): TJSONArray;
     function LastUserMessage(const AMessages: TChatMessageList): string;
+    function MessagesToPlainText(const AMessages: TChatMessageList): string;
     procedure RequireSecret(const ASecretName, ASecretValue: string);
   public
     constructor Create(const ASettings: TLLMSettings); virtual;
@@ -58,6 +59,9 @@ type
   end;
 
 implementation
+
+uses
+  OpenClawClient;
 
 function JsonString(const AObject: TJSONObject; const AName: string): string;
 var
@@ -191,38 +195,6 @@ begin
   end;
 end;
 
-function ExtractOpenClawText(const AResponse: string): string;
-var
-  LRoot: TJSONValue;
-  LObj, LMessage: TJSONObject;
-begin
-  Result := '';
-  LRoot := TJSONObject.ParseJSONValue(AResponse);
-  try
-    if not (LRoot is TJSONObject) then
-    begin
-      Result := AResponse;
-      Exit;
-    end;
-
-    LObj := TJSONObject(LRoot);
-    Result := JsonString(LObj, 'answer');
-    if Result = '' then
-      Result := JsonString(LObj, 'response');
-    if Result = '' then
-      Result := JsonString(LObj, 'content');
-    if Result = '' then
-    begin
-      LMessage := JsonObject(LObj, 'message');
-      Result := JsonString(LMessage, 'content');
-    end;
-    if Result = '' then
-      Result := AResponse;
-  finally
-    LRoot.Free;
-  end;
-end;
-
 { TCustomChatClient }
 
 constructor TCustomChatClient.Create(const ASettings: TLLMSettings);
@@ -296,6 +268,27 @@ begin
   begin
     if SameText(AMessages[I].Role, 'user') then
       Exit(AMessages[I].Content);
+  end;
+end;
+
+function TCustomChatClient.MessagesToPlainText(const AMessages: TChatMessageList): string;
+var
+  LMessage: TChatMessage;
+  LRole: string;
+begin
+  Result := '';
+  for LMessage in AMessages do
+  begin
+    if SameText(LMessage.Role, 'assistant') then
+      LRole := 'Assistente'
+    else if SameText(LMessage.Role, 'system') then
+      LRole := 'Sistema'
+    else
+      LRole := 'Utilizador';
+
+    if Result <> '' then
+      Result := Result + sLineBreak + sLineBreak;
+    Result := Result + LRole + ':' + sLineBreak + LMessage.Content;
   end;
 end;
 
@@ -427,33 +420,37 @@ end;
 
 function TOpenClawChatClient.SendMessage(const AMessages: TChatMessageList): string;
 var
-  LBody: TJSONObject;
-  LMessages: TJSONArray;
-  LResponse: string;
-  LUrl: string;
-  LHeaders: TNetHeaders;
+  LClient: TOpenClawClient;
+  LSettings: TOpenClawSettings;
+  LResult: TOpenClawResult;
+  LMessageText: string;
 begin
   RequireSecret('OpenClaw token', Settings.OpenClawToken);
 
-  LMessages := MessagesToOpenAIJson(AMessages);
-  LBody := TJSONObject.Create;
+  if AMessages.Count > 1 then
+    LMessageText := MessagesToPlainText(AMessages)
+  else
+    LMessageText := LastUserMessage(AMessages);
+
+  LSettings := TOpenClawSettings.Default;
+  LSettings.BaseUrl := Settings.BaseUrl;
+  LSettings.BearerToken := Settings.OpenClawToken;
+  LSettings.Model := Settings.Model;
+  LSettings.SessionKey := Settings.OpenClawEndpoint;
+  LSettings.TimeoutSeconds := Settings.TimeoutSeconds;
+
+  if LSettings.SessionKey.Trim = '' then
+    LSettings.SessionKey := 'DelphiClient-main';
+
+  LClient := TOpenClawClient.Create(LSettings);
   try
-    LBody.AddPair('agent', Settings.Model);
-    LBody.AddPair('model', Settings.Model);
-    LBody.AddPair('prompt', LastUserMessage(AMessages));
-    LBody.AddPair('messages', LMessages);
+    LResult := LClient.SendTextEx(LMessageText);
+    if not LResult.Ok then
+      raise ELLMClientError.Create(LResult.Error);
 
-    LUrl := JoinUrl(Settings.BaseUrl, Settings.OpenClawEndpoint);
-    LHeaders := [
-      TNameValuePair.Create('Content-Type', 'application/json'),
-      TNameValuePair.Create('Authorization', 'Bearer ' + Settings.OpenClawToken),
-      TNameValuePair.Create('X-OpenClaw-Token', Settings.OpenClawToken)
-    ];
-
-    LResponse := SendJson(LUrl, LBody.ToJSON, LHeaders);
-    Result := ExtractOpenClawText(LResponse);
+    Result := LResult.Reply;
   finally
-    LBody.Free;
+    LClient.Free;
   end;
 end;
 
