@@ -7,8 +7,6 @@ uses
   LLM.Config in 'src\LLM.Config.pas',
   LLM.ChatClients in 'src\LLM.ChatClients.pas';
 
-{$R *.res}
-
 begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
